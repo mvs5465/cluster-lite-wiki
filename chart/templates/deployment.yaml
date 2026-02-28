@@ -29,6 +29,14 @@ spec:
               value: {{ .Values.env.WIKI_SITE_NAME | quote }}
             - name: WIKI_DATA_DIR
               value: {{ .Values.persistence.mountPath | quote }}
+            {{- if .Values.otel.endpoint }}
+            - name: OTEL_SERVICE_NAME
+              value: {{ .Values.otel.serviceName | quote }}
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.otel.endpoint | quote }}
+            - name: OTEL_EXPORTER_OTLP_INSECURE
+              value: {{ .Values.otel.insecure | quote }}
+            {{- end }}
           volumeMounts:
             - name: wiki-data
               mountPath: {{ .Values.persistence.mountPath }}
