@@ -2,17 +2,30 @@
 title: Observability And Debugging
 slug: observability-and-debugging
 ---
-Observability in this cluster is split across metrics, dashboards, logs, and health checks.
+Observability in this cluster is split into a collection layer, storage backends, dashboards, and health checks.
 
-## Metrics
+## Collection Layer
 
-Prometheus runs in `monitoring` and provides:
+Grafana Kubernetes Monitoring runs in `monitoring` and uses Alloy-managed collectors for the cluster.
+
+- `k8s-monitoring` chart from Grafana
+- Alloy Operator-managed collectors
+- Cluster metrics enabled
+- Cluster events enabled
+- Pod logs enabled
+- Annotation autodiscovery enabled
+- Prometheus Operator objects enabled for ServiceMonitor-based custom scrapes
+
+ArgoCD metrics are brought in through ServiceMonitors instead of ad hoc static scrape targets.
+
+## Storage And Query
+
+Prometheus remains in `monitoring`, but it now acts as the metrics backend and query UI instead of the primary cluster scraper.
 
 - 7 day retention
 - Persistent storage with a 2Gi volume
-- Node exporter enabled
-- kube-state-metrics enabled
-- extra scrape targets for ArgoCD controller, application set, repo server, and server metrics
+- Remote write receiver enabled
+- Minimal self-scrape config for the Prometheus server itself
 
 Primary UI:
 
@@ -24,7 +37,7 @@ Grafana runs in `monitoring` and loads dashboard definitions from the applicatio
 
 - cluster overview
 - Loki metrics
-- pod metrics
+- pod deep dive
 - ArgoCD overview
 
 Primary UI:
@@ -39,7 +52,7 @@ Loki runs in single-binary mode with filesystem storage and a 24 hour retention 
 - Ingress: disabled
 - Intended use: internal log storage queried by Grafana and tooling
 
-Promtail ships logs into Loki from the cluster.
+Alloy ships pod logs and cluster events into Loki.
 
 ## Health Checks
 

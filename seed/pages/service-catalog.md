@@ -10,11 +10,10 @@ This page is the quick inventory of what is running in the cluster and why.
 | --- | --- | --- |
 | ArgoCD | `argocd` | GitOps deployment control plane |
 | External Secrets | `external-secrets` | Syncs secret data into the cluster |
-| Prometheus Operator CRDs | `monitoring` | Required CRDs for Prometheus ecosystem |
-| Prometheus | `monitoring` | Metrics collection, retention, and query UI |
+| Grafana Kubernetes Monitoring | `monitoring` | Alloy-managed metrics, events, and log collection |
+| Prometheus | `monitoring` | Metrics backend, retention, and query UI |
 | Grafana | `monitoring` | Dashboards and visual analysis |
 | Loki | `monitoring` | Log aggregation backend |
-| Promtail | `monitoring` | Log shipping agent |
 | NGINX Ingress | `ingress-nginx` | Shared ingress layer |
 
 ## User-Facing Services
