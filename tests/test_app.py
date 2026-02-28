@@ -187,6 +187,15 @@ class WikiAppTests(unittest.TestCase):
         self.assertIn(b"Current managed seed body.", response.data)
         self.assertNotIn(b"Edited locally.", response.data)
 
+    def test_metrics_endpoint_exposes_prometheus_metrics(self):
+        self.client.get("/pages")
+
+        response = self.client.get("/metrics")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"cluster_lite_wiki_http_requests_total", response.data)
+        self.assertIn(b"cluster_lite_wiki_http_request_duration_seconds", response.data)
+
 
 if __name__ == "__main__":
     unittest.main()

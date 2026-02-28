@@ -35,6 +35,11 @@ otel:
   insecure: true
   serviceName: "cluster-lite-wiki"
 
+metrics:
+  enabled: true
+  path: /metrics
+  job: "services/cluster-lite-wiki"
+
 persistence:
   enabled: true
   size: 1Gi
