@@ -20,8 +20,7 @@ This page is the quick inventory of what is running in the cluster and why.
 
 | Service | Namespace | Host | Purpose |
 | --- | --- | --- | --- |
-| Homepage | `services` | `homepage.lan` | Main service dashboard |
-| Cluster Home | `services` | `home.lan` | Custom dashboard with curated links |
+| Cluster Home | `services` | `home.lan` | Main custom dashboard with curated links |
 | Cluster Lite Wiki | `services` | `wiki.lan` | Lightweight internal docs |
 | Gatus | `services` | `gatus.lan` | Uptime checks and status |
 | Jellyfin | `services` | `jellyfin.lan` | Media library and streaming |
@@ -39,5 +38,5 @@ This page is the quick inventory of what is running in the cluster and why.
 
 ## Notes
 
-- `Cluster Home` and `Homepage` overlap as navigation layers, but they serve different UX goals.
+- `Cluster Home` is the primary navigation layer for the local cluster.
 - `Cluster Lite Wiki` is optimized for fast browser editing and operational notes.
