@@ -30,6 +30,11 @@ resources:
 env:
   WIKI_SITE_NAME: "Cluster Lite Wiki"
 
+otel:
+  endpoint: ""
+  insecure: true
+  serviceName: "cluster-lite-wiki"
+
 persistence:
   enabled: true
   size: 1Gi

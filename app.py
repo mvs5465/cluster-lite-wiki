@@ -8,10 +8,127 @@ from pathlib import Path
 from flask import Flask, abort, g, redirect, render_template, request, url_for
 from markupsafe import Markup
 import markdown
+from opentelemetry import context, trace
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.trace import SpanKind, Status, StatusCode
 
 
 SLUG_RE = re.compile(r"[^a-z0-9]+")
 WHITESPACE_RE = re.compile(r"\s+")
+TRACER_NAME = "cluster-lite-wiki"
+_TRACING_CONFIGURED = False
+
+
+def _otlp_endpoint() -> str:
+    return (
+        os.environ.get("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
+        or os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
+        or ""
+    ).strip()
+
+
+def _env_flag(name: str, default: bool) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _otlp_insecure(endpoint: str) -> bool:
+    if not endpoint:
+        return False
+    if "OTEL_EXPORTER_OTLP_TRACES_INSECURE" in os.environ:
+        return _env_flag("OTEL_EXPORTER_OTLP_TRACES_INSECURE", False)
+    if "OTEL_EXPORTER_OTLP_INSECURE" in os.environ:
+        return _env_flag("OTEL_EXPORTER_OTLP_INSECURE", False)
+    return endpoint.startswith("http://")
+
+
+def configure_tracing() -> bool:
+    global _TRACING_CONFIGURED
+
+    endpoint = _otlp_endpoint()
+    if not endpoint:
+        return False
+    if _TRACING_CONFIGURED:
+        return True
+
+    provider = TracerProvider(
+        resource=Resource.create(
+            {"service.name": os.environ.get("OTEL_SERVICE_NAME", TRACER_NAME)}
+        )
+    )
+    exporter = OTLPSpanExporter(
+        endpoint=endpoint,
+        insecure=_otlp_insecure(endpoint),
+    )
+    provider.add_span_processor(BatchSpanProcessor(exporter))
+    trace.set_tracer_provider(provider)
+    _TRACING_CONFIGURED = True
+    return True
+
+
+def _start_request_span() -> None:
+    tracer = trace.get_tracer(TRACER_NAME)
+    span = tracer.start_span(
+        f"{request.method} {request.path}",
+        kind=SpanKind.SERVER,
+    )
+    span.set_attribute("http.request.method", request.method)
+    span.set_attribute("url.path", request.path)
+    if request.host:
+        span.set_attribute("server.address", request.host)
+
+    token = context.attach(trace.set_span_in_context(span))
+    g._otel_request_span = span
+    g._otel_request_token = token
+
+
+def _finish_request_span(*, status_code: int | None = None, error_obj: BaseException | None = None) -> None:
+    span = g.pop("_otel_request_span", None)
+    token = g.pop("_otel_request_token", None)
+    if span is None:
+        return
+
+    if status_code is not None:
+        span.set_attribute("http.response.status_code", status_code)
+        if status_code >= 500:
+            span.set_status(Status(StatusCode.ERROR))
+
+    if error_obj is not None:
+        span.record_exception(error_obj)
+        span.set_status(Status(StatusCode.ERROR))
+
+    span.end()
+    if token is not None:
+        context.detach(token)
+
+
+def _normalize_sql(statement: str) -> str:
+    return " ".join(statement.split())
+
+
+def execute_sql(db: sqlite3.Connection, statement: str, parameters=()):
+    tracer = trace.get_tracer(TRACER_NAME)
+    normalized = _normalize_sql(statement)
+    with tracer.start_as_current_span("sqlite.query", kind=SpanKind.CLIENT) as span:
+        span.set_attribute("db.system", "sqlite")
+        span.set_attribute("db.operation.name", normalized.split(" ", 1)[0].upper())
+        span.set_attribute("db.query.text", normalized)
+        return db.execute(statement, parameters)
+
+
+def execute_many_sql(db: sqlite3.Connection, statement: str, parameters):
+    tracer = trace.get_tracer(TRACER_NAME)
+    normalized = _normalize_sql(statement)
+    with tracer.start_as_current_span("sqlite.query", kind=SpanKind.CLIENT) as span:
+        span.set_attribute("db.system", "sqlite")
+        span.set_attribute("db.operation.name", normalized.split(" ", 1)[0].upper())
+        span.set_attribute("db.query.text", normalized)
+        return db.executemany(statement, parameters)
 
 
 def slugify(value: str) -> str:
@@ -137,13 +254,14 @@ def write_seed_pages(
     replace_existing: bool = False,
 ) -> int:
     if replace_existing:
-        db.execute("DELETE FROM pages")
+        execute_sql(db, "DELETE FROM pages")
 
     if not seed_pages:
         return 0
 
     now = datetime.now(timezone.utc).isoformat()
-    db.executemany(
+    execute_many_sql(
+        db,
         """
         INSERT INTO pages (slug, title, body, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?)
@@ -164,6 +282,7 @@ def write_seed_pages(
 
 def create_app(test_config: dict | None = None) -> Flask:
     app = Flask(__name__)
+    tracing_enabled = configure_tracing()
     app_root = Path(__file__).resolve().parent
 
     data_dir = Path(
@@ -189,6 +308,21 @@ def create_app(test_config: dict | None = None) -> Flask:
     if test_config:
         app.config.update(test_config)
 
+    if tracing_enabled:
+        @app.before_request
+        def begin_request_span() -> None:
+            _start_request_span()
+
+        @app.after_request
+        def end_request_span(response):
+            _finish_request_span(status_code=response.status_code)
+            return response
+
+        @app.teardown_request
+        def teardown_request_span(error_obj: BaseException | None) -> None:
+            if error_obj is not None:
+                _finish_request_span(error_obj=error_obj)
+
     def get_db() -> sqlite3.Connection:
         if "db" not in g:
             g.db = sqlite3.connect(app.config["DATABASE"])
@@ -197,7 +331,8 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     def init_db() -> None:
         db = sqlite3.connect(app.config["DATABASE"])
-        db.execute(
+        execute_sql(
+            db,
             """
             CREATE TABLE IF NOT EXISTS pages (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -211,7 +346,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         )
         db.commit()
 
-        existing_rows = db.execute("SELECT COUNT(*) FROM pages").fetchone()[0]
+        existing_rows = execute_sql(db, "SELECT COUNT(*) FROM pages").fetchone()[0]
         if existing_rows == 0:
             seed_pages = load_seed_pages(app.config["SEED_DIR"])
             if write_seed_pages(db, seed_pages) > 0:
@@ -221,7 +356,8 @@ def create_app(test_config: dict | None = None) -> Flask:
     def reseed_pages() -> int:
         db = sqlite3.connect(app.config["DATABASE"])
         try:
-            db.execute(
+            execute_sql(
+                db,
                 """
                 CREATE TABLE IF NOT EXISTS pages (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -268,7 +404,8 @@ def create_app(test_config: dict | None = None) -> Flask:
         db = get_db()
         if query:
             like = f"%{query}%"
-            pages = db.execute(
+            pages = execute_sql(
+                db,
                 """
                 SELECT slug, title, body, updated_at
                 FROM pages
@@ -278,7 +415,8 @@ def create_app(test_config: dict | None = None) -> Flask:
                 (like, like),
             ).fetchall()
         else:
-            pages = db.execute(
+            pages = execute_sql(
+                db,
                 """
                 SELECT slug, title, body, updated_at
                 FROM pages
@@ -323,13 +461,15 @@ def create_app(test_config: dict | None = None) -> Flask:
 
         try:
             if original_slug:
-                page = db.execute(
+                page = execute_sql(
+                    db,
                     "SELECT id FROM pages WHERE slug = ?",
                     (original_slug,),
                 ).fetchone()
                 if page is None:
                     abort(404)
-                db.execute(
+                execute_sql(
+                    db,
                     """
                     UPDATE pages
                     SET slug = ?, title = ?, body = ?, updated_at = ?
@@ -338,7 +478,8 @@ def create_app(test_config: dict | None = None) -> Flask:
                     (slug, title, body, now, page["id"]),
                 )
             else:
-                db.execute(
+                execute_sql(
+                    db,
                     """
                     INSERT INTO pages (slug, title, body, created_at, updated_at)
                     VALUES (?, ?, ?, ?, ?)
@@ -353,7 +494,9 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     @app.get("/pages/<slug>")
     def view_page(slug: str):
-        page = get_db().execute(
+        db = get_db()
+        page = execute_sql(
+            db,
             """
             SELECT slug, title, body, created_at, updated_at
             FROM pages
@@ -363,7 +506,8 @@ def create_app(test_config: dict | None = None) -> Flask:
         ).fetchone()
         if page is None:
             abort(404)
-        nav_pages = get_db().execute(
+        nav_pages = execute_sql(
+            db,
             """
             SELECT slug, title, body, updated_at
             FROM pages
@@ -379,7 +523,8 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     @app.get("/pages/<slug>/edit")
     def edit_page(slug: str):
-        page = get_db().execute(
+        page = execute_sql(
+            get_db(),
             "SELECT slug, title, body FROM pages WHERE slug = ?",
             (slug,),
         ).fetchone()
