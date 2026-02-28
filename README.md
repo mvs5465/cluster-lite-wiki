@@ -23,16 +23,14 @@ The app listens on `http://127.0.0.1:8080` by default and stores data in `./data
 
 ## Kubernetes
 
-The Helm chart lives in `chart/`. To persist data on the shared Colima-mounted storage, set:
+The Helm chart lives in `chart/`. To persist data with a standard Kubernetes PVC, set:
 
 ```yaml
 persistence:
   enabled: true
   size: 1Gi
-  hostPath: /Users/matthewschwartz/clusterstorage/wiki/data
   mountPath: /data
 ```
 
-When `hostPath` is set, the chart creates a `PersistentVolume` and matching `PersistentVolumeClaim`
-that bind the wiki data to the Colima-mounted `~/clusterstorage` path. If `hostPath` is omitted,
-the chart still creates a PVC, but it uses the cluster's default storage class instead.
+The chart creates a `PersistentVolumeClaim` and relies on the cluster's default storage class
+to provision backing storage unless you set `persistence.storageClassName` or `persistence.existingClaim`.

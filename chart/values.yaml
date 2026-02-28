@@ -35,9 +35,7 @@ persistence:
   size: 1Gi
   accessMode: ReadWriteOnce
   storageClassName: ""
-  volumeName: ""
   existingClaim: ""
-  hostPath: ""
   mountPath: /data
 
 nodeSelector: {}
