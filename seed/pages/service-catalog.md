@@ -25,7 +25,6 @@ This page is the quick inventory of what is running in the cluster and why.
 | Cluster Lite Wiki | `services` | `wiki.lan` | Lightweight internal docs |
 | Gatus | `services` | `gatus.lan` | Uptime checks and status |
 | Jellyfin | `services` | `jellyfin.lan` | Media library and streaming |
-| Outline | `outline` | `outline.lan` | Rich wiki and collaboration |
 
 ## AI And Tooling
 
@@ -42,4 +41,3 @@ This page is the quick inventory of what is running in the cluster and why.
 
 - `Cluster Home` and `Homepage` overlap as navigation layers, but they serve different UX goals.
 - `Cluster Lite Wiki` is optimized for fast browser editing and operational notes.
-- `Outline` remains the heavier, collaborative long-form knowledge base.

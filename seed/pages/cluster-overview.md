@@ -39,10 +39,6 @@ Mac Host
         +-- ai
         |     |
         |     +-- chat / cluster-query-router / ollama bridge
-        |
-        +-- outline
-              |
-              +-- outline app / postgres / redis
 ```
 
 ## Key Namespaces
@@ -54,7 +50,6 @@ Mac Host
 | `ingress-nginx` | Shared ingress controller |
 | `external-secrets` | Cluster secret synchronization |
 | `services` | User-facing web apps and dashboards |
-| `outline` | Outline app plus its PostgreSQL and Redis components |
 | `ai` | Chat, query router, Ollama bridge, and related tools |
 
 ## Main User-Facing Services
@@ -66,7 +61,6 @@ Mac Host
 | Cluster Lite Wiki | `wiki.lan` | Lightweight notes, runbooks, and reference docs |
 | Gatus | `gatus.lan` | Health checks and uptime status |
 | Jellyfin | `jellyfin.lan` | Media server |
-| Outline | `outline.lan` | Rich collaborative wiki |
 | Chat | `chat.lan` | Open WebUI connected to the local AI stack |
 | Cluster Info | `info.lan` | Query routing and cluster context tools |
 

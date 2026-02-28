@@ -65,7 +65,6 @@ Gatus runs in `services` and probes core internal endpoints on a 60 second inter
 - ArgoCD
 - Gatus
 - Jellyfin
-- Outline
 - Chat
 - Ollama
 
