@@ -29,7 +29,6 @@ Then make sure `/etc/hosts` includes:
 
 | Host | Service |
 | --- | --- |
-| `homepage.lan` | Homepage dashboard |
 | `home.lan` | Cluster Home |
 | `wiki.lan` | Cluster Lite Wiki |
 | `gatus.lan` | Gatus status page |
@@ -47,7 +46,7 @@ External requests terminate at NGINX, then route to namespace-local ClusterIP se
 
 - `prometheus-server.monitoring.svc.cluster.local`
 - `loki.monitoring.svc.cluster.local`
-- `homepage.services.svc.cluster.local`
+- `cluster-home.services.svc.cluster.local`
 - `ollama-external.ai.svc.cluster.local`
 
 This keeps public access simple while allowing internal dependencies to use stable service discovery.

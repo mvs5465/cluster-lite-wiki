@@ -10,7 +10,7 @@ This local Kubernetes environment is a Colima-backed k3s cluster managed through
 - Kubernetes distribution: k3s
 - GitOps: ArgoCD watches `main` and applies both infrastructure and application repos
 - Primary hostnames: `*.lan`
-- Main entry point: `http://homepage.lan`
+- Main entry point: `http://home.lan`
 
 ## Topology Diagram
 
@@ -30,7 +30,7 @@ Mac Host
         |
         +-- services
         |     |
-        |     +-- homepage / cluster-home / cluster-lite-wiki / gatus / jellyfin
+        |     +-- cluster-home / cluster-lite-wiki / gatus / jellyfin
         |
         +-- monitoring
         |     |
@@ -56,7 +56,6 @@ Mac Host
 
 | Service | Host | Role |
 | --- | --- | --- |
-| Homepage | `homepage.lan` | General dashboard with links and cluster widgets |
 | Cluster Home | `home.lan` | Custom curated dashboard for the cluster |
 | Cluster Lite Wiki | `wiki.lan` | Lightweight notes, runbooks, and reference docs |
 | Gatus | `gatus.lan` | Health checks and uptime status |
