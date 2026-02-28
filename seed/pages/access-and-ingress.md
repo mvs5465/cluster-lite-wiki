@@ -34,7 +34,6 @@ Then make sure `/etc/hosts` includes:
 | `wiki.lan` | Cluster Lite Wiki |
 | `gatus.lan` | Gatus status page |
 | `jellyfin.lan` | Jellyfin |
-| `outline.lan` | Outline |
 | `chat.lan` | Open WebUI |
 | `info.lan` | Cluster Query Router |
 | `prometheus.lan` | Prometheus UI |

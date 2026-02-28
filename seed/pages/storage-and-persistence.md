@@ -23,8 +23,6 @@ Current host-mounted data paths include:
 | Path | Used By |
 | --- | --- |
 | `~/clusterstorage/files` | Jellyfin media files |
-| `~/clusterstorage/outline/files` | Outline uploaded files |
-| `~/clusterstorage/outline/postgres` | Outline PostgreSQL data |
 
 These survive cluster recreation as long as the Colima mount is preserved.
 
@@ -45,7 +43,6 @@ This is the current storage model for Cluster Lite Wiki.
 - Prometheus uses a 2Gi persistent volume for metrics retention.
 - Loki uses a 1Gi persistent volume in single-binary mode.
 - Gatus stores its SQLite database under `/data/gatus.db` on a PVC.
-- Outline mixes hostPath storage for long-lived files and PostgreSQL with `emptyDir` for Redis.
 
 ## Operational Guidance
 
