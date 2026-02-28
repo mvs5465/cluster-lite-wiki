@@ -34,7 +34,7 @@ Mac Host
         |
         +-- monitoring
         |     |
-        |     +-- prometheus / grafana / loki / promtail / mcp services
+        |     +-- k8s-monitoring / prometheus / grafana / loki / mcp services
         |
         +-- ai
         |     |
@@ -50,7 +50,7 @@ Mac Host
 | Namespace | Purpose |
 | --- | --- |
 | `argocd` | GitOps control plane and root applications |
-| `monitoring` | Prometheus, Grafana, Loki, Promtail, and MCP services |
+| `monitoring` | Grafana, Loki, Prometheus, Grafana Kubernetes Monitoring, and MCP services |
 | `ingress-nginx` | Shared ingress controller |
 | `external-secrets` | Cluster secret synchronization |
 | `services` | User-facing web apps and dashboards |
