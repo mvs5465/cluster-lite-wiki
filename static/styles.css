@@ -99,8 +99,75 @@ p {
 
 .shell {
   margin: 0 auto;
-  max-width: 1240px;
-  padding: 2rem;
+  max-width: 1480px;
+  padding: 1.5rem 2rem 2rem;
+}
+
+.wiki-layout {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: 280px minmax(760px, 920px);
+  justify-content: center;
+}
+
+.wiki-nav {
+  align-self: start;
+  background: rgba(250, 247, 239, 0.94);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(58, 43, 18, 0.05);
+  display: grid;
+  gap: 1rem;
+  padding: 1.2rem;
+  position: sticky;
+  top: 5.5rem;
+}
+
+.wiki-nav-section {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.wiki-nav h1 {
+  font-size: 2rem;
+}
+
+.wiki-search {
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+}
+
+.wiki-search button,
+.full-width {
+  width: 100%;
+}
+
+.article-index {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 0.1rem;
+  max-height: 28rem;
+  overflow-y: auto;
+  padding-top: 0.9rem;
+}
+
+.article-index a {
+  border-radius: 6px;
+  color: var(--brand);
+  padding: 0.35rem 0.45rem;
+  text-decoration: none;
+}
+
+.article-index a:hover,
+.article-index a:focus-visible {
+  background: rgba(24, 78, 119, 0.07);
+  outline: none;
+}
+
+.article-index a.current-page {
+  background: rgba(24, 78, 119, 0.12);
+  color: var(--text);
+  font-weight: 700;
 }
 
 .docs-layout {
@@ -134,6 +201,34 @@ p {
 .doc-panel {
   display: grid;
   gap: 1.5rem;
+}
+
+.wiki-main {
+  background: rgba(255, 252, 246, 0.98);
+  border-radius: 10px;
+  display: grid;
+  gap: 1rem;
+  margin: 0 auto;
+  width: 100%;
+  padding: 1.5rem;
+}
+
+.article-page {
+  min-height: 42rem;
+}
+
+.wiki-main-header {
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding-bottom: 1rem;
+}
+
+.wiki-main-header h2 {
+  font-size: clamp(2rem, 3vw, 2.8rem);
+  letter-spacing: -0.03em;
+  white-space: nowrap;
 }
 
 .page-index-header {
@@ -235,6 +330,10 @@ textarea::placeholder {
   color: #9d8a70;
 }
 
+.wiki-search input::placeholder {
+  font-style: italic;
+}
+
 input:focus,
 textarea:focus,
 button:focus {
@@ -268,6 +367,12 @@ button {
   text-decoration: none;
 }
 
+.button-icon {
+  display: inline-block;
+  font-style: normal;
+  line-height: 1;
+}
+
 .button {
   background: var(--panel-strong);
 }
@@ -287,6 +392,183 @@ button {
 .page-list {
   display: grid;
   gap: 1rem;
+}
+
+.category-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.link-grid {
+  align-items: start;
+}
+
+.category-panel {
+  background: rgba(255, 255, 255, 0.48);
+  border: 1px solid rgba(90, 72, 44, 0.12);
+  border-radius: 8px;
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.featured-article {
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(90, 72, 44, 0.12);
+  border-radius: 8px;
+  display: grid;
+  gap: 0.9rem;
+  margin-bottom: 0.25rem;
+  padding: 1rem;
+}
+
+.featured-body {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.featured-body h3 {
+  font-size: 1.65rem;
+}
+
+.featured-body h3 a {
+  color: var(--brand);
+  text-decoration: none;
+}
+
+.featured-body h3 a:hover,
+.featured-body h3 a:focus-visible {
+  color: var(--brand);
+  text-decoration: underline;
+  outline: none;
+}
+
+.category-header {
+  align-items: baseline;
+  border-bottom: 1px solid rgba(90, 72, 44, 0.1);
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  padding-bottom: 0.6rem;
+}
+
+.category-header h3 {
+  font-size: 1.35rem;
+}
+
+.article-listing {
+  display: grid;
+}
+
+.article-row {
+  align-items: start;
+  border-bottom: 1px solid rgba(90, 72, 44, 0.12);
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 1rem 0;
+}
+
+.compact-listing {
+  gap: 0;
+}
+
+.compact-row {
+  gap: 0.75rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 0.8rem 0;
+}
+
+.article-row:first-child {
+  padding-top: 0;
+}
+
+.article-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.article-row-main,
+.article-row-actions {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.article-row h3 {
+  font-size: 1.7rem;
+}
+
+.article-row h4 {
+  font-family: "Charter", "Iowan Old Style", "Palatino Linotype", serif;
+  font-size: 1.2rem;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  margin: 0;
+}
+
+.article-row h4 a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.article-row h4 a:hover,
+.article-row h4 a:focus-visible {
+  color: var(--brand);
+  text-decoration: underline;
+  outline: none;
+}
+
+.article-row h3 a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.article-row h3 a:hover,
+.article-row h3 a:focus-visible {
+  color: var(--brand);
+  text-decoration: underline;
+  outline: none;
+}
+
+.article-meta {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.compact-summary {
+  font-size: 0.98rem;
+  line-height: 1.45;
+}
+
+.compact-actions {
+  align-content: start;
+  gap: 0.45rem;
+}
+
+.compact-actions .button {
+  min-width: 5.2rem;
+  padding: 0.55rem 0.85rem;
+}
+
+.category-link-list {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.category-link-list a {
+  border-radius: 6px;
+  color: var(--brand);
+  line-height: 1.35;
+  padding: 0.28rem 0.35rem;
+  text-decoration: none;
+}
+
+.category-link-list a:hover,
+.category-link-list a:focus-visible {
+  background: rgba(24, 78, 119, 0.07);
+  outline: none;
+  text-decoration: underline;
 }
 
 .page-card {
@@ -352,6 +634,11 @@ button {
   text-align: center;
 }
 
+.compact-empty {
+  border-radius: 10px;
+  padding: 1rem;
+}
+
 .content {
   color: #2f2418;
   line-height: 1.75;
@@ -398,10 +685,16 @@ button {
 }
 
 @media (max-width: 980px) {
+  .wiki-layout,
   .docs-layout {
     grid-template-columns: 1fr;
   }
 
+  .category-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .wiki-nav,
   .sidebar-card {
     position: static;
   }
@@ -409,9 +702,11 @@ button {
 
 @media (max-width: 720px) {
   .topbar,
+  .wiki-main-header,
   .page-index-header,
   .search,
   .field-grid,
+  .article-row,
   .page-card,
   .actions {
     display: grid;
@@ -429,4 +724,9 @@ button {
   .page-card-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .article-row-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
 }

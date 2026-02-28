@@ -1,65 +1,76 @@
 {% extends "base.html" %}
 {% block title %}Pages | {{ site_name }}{% endblock %}
 {% block content %}
-<section class="docs-layout">
-  <aside class="sidebar-card">
-    <p class="eyebrow">Workspace</p>
-    <h1>Docs Library</h1>
-    <p class="muted">A cleaner index for cluster notes, operating guides, and quick references.</p>
-    <a class="button primary" href="{{ url_for('new_page') }}">New Document</a>
-    <dl class="meta-list">
-      <div>
-        <dt>Total pages</dt>
-        <dd>{{ pages|length }}</dd>
-      </div>
-      <div>
-        <dt>Current filter</dt>
-        <dd>{{ query or "All pages" }}</dd>
-      </div>
-    </dl>
-    <div class="sidebar-note">
-      <h2>Good wiki structure</h2>
-      <p>Use short titles, stable slugs, and front-load the first paragraph with what the page is for.</p>
+<section class="wiki-layout">
+  <aside class="wiki-nav">
+    <div class="wiki-nav-section">
+      <p class="eyebrow">Navigation</p>
+      <h1>All Articles</h1>
+      <p class="muted">An alphabetical index for the cluster knowledge base.</p>
     </div>
-  </aside>
-
-  <section class="panel page-index">
-    <div class="page-index-header">
-      <div>
-        <p class="eyebrow">Browse</p>
-        <h2>Find the right page quickly</h2>
-      </div>
-      <p class="muted">Search title or body text, then jump straight into the page or edit flow.</p>
-    </div>
-
-    <form class="search search-wide" method="get" action="{{ url_for('list_pages') }}">
-      <input type="search" name="q" value="{{ query }}" placeholder="Search pages, runbooks, commands, owners">
+    <a class="button primary full-width" href="{{ url_for('new_page') }}"><span class="button-icon" aria-hidden="true">&#9998;</span> Create Article</a>
+    <form class="search wiki-search" method="get" action="{{ url_for('list_pages') }}">
+      <input type="search" name="q" value="{{ query }}" placeholder="Search">
       <button type="submit">Search</button>
     </form>
+    <div class="wiki-nav-section">
+      <p class="eyebrow">Stats</p>
+      <p><strong>{{ pages|length }}</strong> visible article{% if pages|length != 1 %}s{% endif %}</p>
+      <p class="muted">Filter: {{ query or "All pages" }}</p>
+    </div>
+    {% if pages %}
+    <nav class="article-index" aria-label="Article index">
+      {% for page in pages %}
+      <a href="{{ url_for('view_page', slug=page['slug']) }}">{{ page['title'] }}</a>
+      {% endfor %}
+    </nav>
+    {% else %}
+    <div class="empty compact-empty">
+      <p>No matching articles.</p>
+    </div>
+    {% endif %}
+  </aside>
+
+  <section class="panel wiki-main">
+    <div class="wiki-main-header">
+      <div>
+        <p class="eyebrow">Main Page</p>
+        <h2>Cluster Articles</h2>
+      </div>
+    </div>
 
     {% if pages %}
-    <div class="page-list">
-      {% for page in pages %}
-      <article class="page-card">
-        <div class="page-card-main">
-          <div class="page-card-topline">
-            <span class="slug-chip">/{{ page['slug'] }}</span>
-            <span class="muted">Updated {{ page['updated_at'] }}</span>
-          </div>
-          <h3><a href="{{ url_for('view_page', slug=page['slug']) }}">{{ page['title'] }}</a></h3>
-          <p class="page-summary">{{ page['body'][:220] }}{% if page['body']|length > 220 %}...{% endif %}</p>
-        </div>
-        <div class="page-card-actions">
-          <a class="button" href="{{ url_for('view_page', slug=page['slug']) }}">Open</a>
-          <a class="button subtle" href="{{ url_for('edit_page', slug=page['slug']) }}">Edit</a>
-        </div>
+    <section class="featured-article">
+      <div class="category-header">
+        <h3>Featured Article</h3>
+        <p class="muted">Start here</p>
+      </div>
+      <article class="featured-body">
+        <h3><a href="{{ url_for('view_page', slug=featured_page['slug']) }}">{{ featured_page['title'] }}</a></h3>
+        <p class="article-meta">/{{ featured_page['slug'] }} · Updated {{ featured_page['updated_at'] }}</p>
+        <p class="page-summary">{{ featured_page['body']|excerpt(260) }}</p>
       </article>
+    </section>
+
+    <div class="category-grid link-grid">
+      {% for category, category_pages in grouped_pages %}
+      <section class="category-panel">
+        <div class="category-header">
+          <h3>{{ category }}</h3>
+          <p class="muted">{{ category_pages|length }} article{% if category_pages|length != 1 %}s{% endif %}</p>
+        </div>
+        <nav class="category-link-list" aria-label="{{ category }}">
+          {% for page in category_pages %}
+          <a href="{{ url_for('view_page', slug=page['slug']) }}">{{ page['title'] }}</a>
+          {% endfor %}
+        </nav>
+      </section>
       {% endfor %}
     </div>
     {% else %}
     <div class="empty">
       <h3>No pages yet</h3>
-      <p>Start by creating the first page in this workspace.</p>
+      <p>Start by creating the first article in this wiki.</p>
     </div>
     {% endif %}
   </section>

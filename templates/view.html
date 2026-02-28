@@ -1,35 +1,35 @@
 {% extends "base.html" %}
 {% block title %}{{ page['title'] }} | {{ site_name }}{% endblock %}
 {% block content %}
-<section class="docs-layout">
-  <aside class="sidebar-card">
-    <p class="eyebrow">Page Info</p>
-    <h1>{{ page['title'] }}</h1>
-    <p class="muted">Documentation page in the shared wiki.</p>
-    <dl class="meta-list">
-      <div>
-        <dt>Slug</dt>
-        <dd>/{{ page['slug'] }}</dd>
-      </div>
-      <div>
-        <dt>Updated</dt>
-        <dd>{{ page['updated_at'] }}</dd>
-      </div>
-      <div>
-        <dt>Created</dt>
-        <dd>{{ page['created_at'] }}</dd>
-      </div>
-    </dl>
-    <a class="button primary" href="{{ url_for('edit_page', slug=page['slug']) }}">Edit Page</a>
+<section class="wiki-layout">
+  <aside class="wiki-nav">
+    <div class="wiki-nav-section">
+      <p class="eyebrow">Navigation</p>
+      <h1>All Articles</h1>
+      <p class="muted">Browse the full wiki while reading.</p>
+    </div>
+    <a class="button primary full-width" href="{{ url_for('edit_page', slug=page['slug']) }}"><span class="button-icon" aria-hidden="true">&#9998;</span> Edit Article</a>
+    <a class="button full-width" href="{{ url_for('list_pages') }}"><span class="button-icon" aria-hidden="true">&larr;</span> Back To Main Page</a>
+    <div class="wiki-nav-section">
+      <p class="eyebrow">This Page</p>
+      <p><strong>{{ page['title'] }}</strong></p>
+      <p class="muted">/{{ page['slug'] }}</p>
+      <p class="muted">Updated {{ page['updated_at'] }}</p>
+    </div>
+    <nav class="article-index" aria-label="Article index">
+      {% for nav_page in nav_pages %}
+      <a href="{{ url_for('view_page', slug=nav_page['slug']) }}"{% if nav_page['slug'] == page['slug'] %} class="current-page"{% endif %}>{{ nav_page['title'] }}</a>
+      {% endfor %}
+    </nav>
   </aside>
 
-  <article class="panel doc-panel">
-    <div class="page-index-header">
+  <article class="panel wiki-main article-page">
+    <div class="wiki-main-header">
       <div>
-        <p class="eyebrow">Document</p>
+        <p class="eyebrow">Article</p>
         <h2>{{ page['title'] }}</h2>
       </div>
-      <a class="button subtle" href="{{ url_for('list_pages') }}">Back to Library</a>
+      <p class="muted">Created {{ page['created_at'] }}</p>
     </div>
     <div class="content">
       {{ page['body']|markdown }}
