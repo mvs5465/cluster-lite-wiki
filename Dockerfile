@@ -13,6 +13,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app.py wsgi.py ./
 COPY templates ./templates
 COPY static ./static
+COPY seed ./seed
 
 RUN mkdir -p /data
 
