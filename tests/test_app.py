@@ -15,6 +15,7 @@ class WikiAppTests(unittest.TestCase):
                 "TESTING": True,
                 "DATA_DIR": data_dir,
                 "DATABASE": str(data_dir / "wiki.db"),
+                "SEED_DIR": data_dir / "missing-seed",
                 "SITE_NAME": "Test Wiki",
             }
         )
@@ -69,6 +70,122 @@ class WikiAppTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Alpha", response.data)
         self.assertNotIn(b"Beta", response.data)
+
+    def test_seed_pages_load_when_database_is_empty(self):
+        seed_dir = Path(self.temp_dir.name) / "seed-pages"
+        seed_dir.mkdir()
+        (seed_dir / "cluster.md").write_text(
+            "---\n"
+            "title: Seed Page\n"
+            "slug: seed-page\n"
+            "---\n"
+            "Seeded content for the cluster wiki.\n",
+            encoding="utf-8",
+        )
+
+        data_dir = Path(self.temp_dir.name) / "seeded-data"
+        app = create_app(
+            {
+                "TESTING": True,
+                "DATA_DIR": data_dir,
+                "DATABASE": str(data_dir / "wiki.db"),
+                "SEED_DIR": seed_dir,
+                "SITE_NAME": "Seeded Wiki",
+            }
+        )
+
+        response = app.test_client().get("/pages")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Seed Page", response.data)
+        self.assertIn(b"Seeded content", response.data)
+
+    def test_seed_does_not_overwrite_existing_pages(self):
+        seed_dir = Path(self.temp_dir.name) / "seed-pages"
+        seed_dir.mkdir()
+        (seed_dir / "cluster.md").write_text(
+            "---\n"
+            "title: Seed Page\n"
+            "slug: seed-page\n"
+            "---\n"
+            "Original seed body.\n",
+            encoding="utf-8",
+        )
+
+        data_dir = Path(self.temp_dir.name) / "seeded-data"
+        initial_app = create_app(
+            {
+                "TESTING": True,
+                "DATA_DIR": data_dir,
+                "DATABASE": str(data_dir / "wiki.db"),
+                "SEED_DIR": seed_dir,
+                "SITE_NAME": "Seeded Wiki",
+            }
+        )
+        initial_client = initial_app.test_client()
+        initial_client.post(
+            "/pages",
+            data={
+                "original_slug": "seed-page",
+                "title": "Seed Page",
+                "slug": "seed-page",
+                "body": "Edited after first boot.",
+            },
+        )
+
+        restarted_app = create_app(
+            {
+                "TESTING": True,
+                "DATA_DIR": data_dir,
+                "DATABASE": str(data_dir / "wiki.db"),
+                "SEED_DIR": seed_dir,
+                "SITE_NAME": "Seeded Wiki",
+            }
+        )
+        response = restarted_app.test_client().get("/pages/seed-page")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Edited after first boot.", response.data)
+        self.assertNotIn(b"Original seed body.", response.data)
+
+    def test_reseed_replaces_existing_pages_with_seed_content(self):
+        seed_dir = Path(self.temp_dir.name) / "seed-pages"
+        seed_dir.mkdir()
+        (seed_dir / "cluster.md").write_text(
+            "---\n"
+            "title: Seed Page\n"
+            "slug: seed-page\n"
+            "---\n"
+            "Current managed seed body.\n",
+            encoding="utf-8",
+        )
+
+        data_dir = Path(self.temp_dir.name) / "seeded-data"
+        app = create_app(
+            {
+                "TESTING": True,
+                "DATA_DIR": data_dir,
+                "DATABASE": str(data_dir / "wiki.db"),
+                "SEED_DIR": seed_dir,
+                "SITE_NAME": "Seeded Wiki",
+            }
+        )
+        client = app.test_client()
+        client.post(
+            "/pages",
+            data={
+                "original_slug": "seed-page",
+                "title": "Seed Page",
+                "slug": "seed-page",
+                "body": "Edited locally.",
+            },
+        )
+
+        inserted = app.reseed_pages()
+        self.assertEqual(inserted, 1)
+
+        response = client.get("/pages/seed-page")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Current managed seed body.", response.data)
+        self.assertNotIn(b"Edited locally.", response.data)
 
 
 if __name__ == "__main__":

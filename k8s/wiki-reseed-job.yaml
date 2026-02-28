@@ -1,0 +1,25 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: wiki-reseed
+  namespace: services
+spec:
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: reseed
+          image: ghcr.io/mvs5465/cluster-lite-wiki:main
+          command: ["python", "app.py", "reseed"]
+          env:
+            - name: WIKI_DATA_DIR
+              value: /data
+          volumeMounts:
+            - name: wiki-data
+              mountPath: /data
+      volumes:
+        - name: wiki-data
+          persistentVolumeClaim:
+            claimName: cluster-lite-wiki-data

@@ -1,6 +1,7 @@
 import os
 import re
 import sqlite3
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -10,6 +11,7 @@ import markdown
 
 
 SLUG_RE = re.compile(r"[^a-z0-9]+")
+WHITESPACE_RE = re.compile(r"\s+")
 
 
 def slugify(value: str) -> str:
@@ -28,13 +30,151 @@ def render_markdown(source: str) -> Markup:
     return Markup(html)
 
 
+def build_excerpt(source: str, limit: int = 260) -> str:
+    text = re.sub(r"```.*?```", " ", source, flags=re.DOTALL)
+    text = re.sub(r"`([^`]*)`", r"\1", text)
+    text = re.sub(r"^\s{0,3}#{1,6}\s*", "", text, flags=re.MULTILINE)
+    text = re.sub(r"^\s*[-*+]\s+", "", text, flags=re.MULTILINE)
+    text = re.sub(r"^\s*\d+\.\s+", "", text, flags=re.MULTILINE)
+    text = text.replace("|", " ")
+    text = WHITESPACE_RE.sub(" ", text).strip()
+    if len(text) <= limit:
+        return text
+    return text[:limit].rstrip() + "..."
+
+
+def categorize_page(page: sqlite3.Row) -> str:
+    text = f"{page['title']} {page['slug']}".lower()
+
+    if any(term in text for term in ("overview", "catalog", "access", "ingress")):
+        return "Core Docs"
+    if any(term in text for term in ("ai", "query", "gitops", "repo", "platform", "mcp")):
+        return "Platform"
+    if any(term in text for term in ("observability", "debug", "storage", "runbook")):
+        return "Operations"
+    return "General"
+
+
+def group_pages(pages) -> list[tuple[str, list[sqlite3.Row]]]:
+    order = ["Core Docs", "Operations", "Platform", "General"]
+    grouped: dict[str, list[sqlite3.Row]] = {name: [] for name in order}
+
+    for page in pages:
+        grouped[categorize_page(page)].append(page)
+
+    return [
+        (name, grouped[name])
+        for name in order
+        if grouped[name]
+    ]
+
+
+def choose_featured_page(pages):
+    if not pages:
+        return None
+
+    preferred_slugs = [
+        "cluster-overview",
+        "service-catalog",
+        "access-and-ingress",
+    ]
+    for slug in preferred_slugs:
+        for page in pages:
+            if page["slug"] == slug:
+                return page
+    return pages[0]
+
+
+def parse_seed_page(path: Path) -> dict[str, str]:
+    raw = path.read_text(encoding="utf-8")
+    metadata: dict[str, str] = {}
+    body = raw
+
+    if raw.startswith("---\n"):
+        marker = "\n---\n"
+        end_index = raw.find(marker, 4)
+        if end_index != -1:
+            header = raw[4:end_index]
+            body = raw[end_index + len(marker):]
+            for line in header.splitlines():
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                key, separator, value = stripped.partition(":")
+                if not separator:
+                    raise ValueError(f"Invalid seed metadata line in {path.name}: {line}")
+                metadata[key.strip()] = value.strip()
+
+    title = metadata.get("title", "").strip()
+    if not title:
+        raise ValueError(f"Seed page {path.name} is missing a title")
+
+    content = body.strip()
+    if not content:
+        raise ValueError(f"Seed page {path.name} has no body content")
+
+    return {
+        "slug": slugify(metadata.get("slug", title)),
+        "title": title,
+        "body": content,
+    }
+
+
+def load_seed_pages(seed_dir: Path) -> list[dict[str, str]]:
+    if not seed_dir.exists():
+        return []
+
+    pages: list[dict[str, str]] = []
+    for path in sorted(seed_dir.glob("*.md")):
+        pages.append(parse_seed_page(path))
+    return pages
+
+
+def write_seed_pages(
+    db: sqlite3.Connection,
+    seed_pages: list[dict[str, str]],
+    *,
+    replace_existing: bool = False,
+) -> int:
+    if replace_existing:
+        db.execute("DELETE FROM pages")
+
+    if not seed_pages:
+        return 0
+
+    now = datetime.now(timezone.utc).isoformat()
+    db.executemany(
+        """
+        INSERT INTO pages (slug, title, body, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        [
+            (
+                page["slug"],
+                page["title"],
+                page["body"],
+                now,
+                now,
+            )
+            for page in seed_pages
+        ],
+    )
+    return len(seed_pages)
+
+
 def create_app(test_config: dict | None = None) -> Flask:
     app = Flask(__name__)
+    app_root = Path(__file__).resolve().parent
 
     data_dir = Path(
         (test_config or {}).get("DATA_DIR")
         or os.environ.get("WIKI_DATA_DIR")
         or (Path.cwd() / "data")
+    )
+    seed_dir = Path(
+        (test_config or {}).get("SEED_DIR")
+        or os.environ.get("WIKI_SEED_DIR")
+        or (app_root / "seed" / "pages")
     )
     data_dir.mkdir(parents=True, exist_ok=True)
     db_path = data_dir / "wiki.db"
@@ -42,6 +182,7 @@ def create_app(test_config: dict | None = None) -> Flask:
     app.config.update(
         DATA_DIR=data_dir,
         DATABASE=str(db_path),
+        SEED_DIR=seed_dir,
         SITE_NAME=os.environ.get("WIKI_SITE_NAME", "Cluster Lite Wiki"),
     )
 
@@ -69,7 +210,35 @@ def create_app(test_config: dict | None = None) -> Flask:
             """
         )
         db.commit()
+
+        existing_rows = db.execute("SELECT COUNT(*) FROM pages").fetchone()[0]
+        if existing_rows == 0:
+            seed_pages = load_seed_pages(app.config["SEED_DIR"])
+            if write_seed_pages(db, seed_pages) > 0:
+                db.commit()
         db.close()
+
+    def reseed_pages() -> int:
+        db = sqlite3.connect(app.config["DATABASE"])
+        try:
+            db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS pages (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    slug TEXT NOT NULL UNIQUE,
+                    title TEXT NOT NULL,
+                    body TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+                """
+            )
+            seed_pages = load_seed_pages(app.config["SEED_DIR"])
+            inserted = write_seed_pages(db, seed_pages, replace_existing=True)
+            db.commit()
+            return inserted
+        finally:
+            db.close()
 
     @app.teardown_appcontext
     def close_db(_error: BaseException | None) -> None:
@@ -80,6 +249,10 @@ def create_app(test_config: dict | None = None) -> Flask:
     @app.template_filter("markdown")
     def markdown_filter(value: str) -> Markup:
         return render_markdown(value)
+
+    @app.template_filter("excerpt")
+    def excerpt_filter(value: str, limit: int = 260) -> str:
+        return build_excerpt(value, limit)
 
     @app.context_processor
     def inject_globals() -> dict:
@@ -112,7 +285,13 @@ def create_app(test_config: dict | None = None) -> Flask:
                 ORDER BY title COLLATE NOCASE
                 """
             ).fetchall()
-        return render_template("list.html", pages=pages, query=query)
+        return render_template(
+            "list.html",
+            pages=pages,
+            featured_page=choose_featured_page(pages),
+            grouped_pages=group_pages(pages),
+            query=query,
+        )
 
     @app.get("/pages/new")
     def new_page():
@@ -184,7 +363,19 @@ def create_app(test_config: dict | None = None) -> Flask:
         ).fetchone()
         if page is None:
             abort(404)
-        return render_template("view.html", page=page)
+        nav_pages = get_db().execute(
+            """
+            SELECT slug, title, body, updated_at
+            FROM pages
+            ORDER BY title COLLATE NOCASE
+            """
+        ).fetchall()
+        return render_template(
+            "view.html",
+            page=page,
+            nav_pages=nav_pages,
+            grouped_pages=group_pages(nav_pages),
+        )
 
     @app.get("/pages/<slug>/edit")
     def edit_page(slug: str):
@@ -196,11 +387,19 @@ def create_app(test_config: dict | None = None) -> Flask:
             abort(404)
         return render_template("edit.html", page=page, is_new=False)
 
+    app.reseed_pages = reseed_pages
     init_db()
     return app
 
 
 if __name__ == "__main__":
     app = create_app()
+    if len(sys.argv) > 1 and sys.argv[1] == "reseed":
+        inserted = app.reseed_pages()
+        print(
+            f"Replaced wiki contents with {inserted} seed page"
+            f"{'' if inserted == 1 else 's'}."
+        )
+        raise SystemExit(0)
     port = int(os.environ.get("PORT", "8080"))
     app.run(host="0.0.0.0", port=port)
