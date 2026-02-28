@@ -2,10 +2,11 @@ import os
 import re
 import sqlite3
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from flask import Flask, abort, g, redirect, render_template, request, url_for
+from flask import Flask, Response, abort, g, redirect, render_template, request, url_for
 from markupsafe import Markup
 import markdown
 from opentelemetry import context, trace
@@ -14,12 +15,23 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.trace import SpanKind, Status, StatusCode
+from prometheus_client import CONTENT_TYPE_LATEST, CollectorRegistry, Counter, Histogram, generate_latest, multiprocess
 
 
 SLUG_RE = re.compile(r"[^a-z0-9]+")
 WHITESPACE_RE = re.compile(r"\s+")
 TRACER_NAME = "cluster-lite-wiki"
 _TRACING_CONFIGURED = False
+HTTP_REQUESTS = Counter(
+    "cluster_lite_wiki_http_requests_total",
+    "Total HTTP requests handled by cluster-lite-wiki.",
+    ["method", "handler", "status"],
+)
+HTTP_REQUEST_DURATION = Histogram(
+    "cluster_lite_wiki_http_request_duration_seconds",
+    "HTTP request latency for cluster-lite-wiki.",
+    ["method", "handler"],
+)
 
 
 def _otlp_endpoint() -> str:
@@ -105,6 +117,23 @@ def _finish_request_span(*, status_code: int | None = None, error_obj: BaseExcep
     span.end()
     if token is not None:
         context.detach(token)
+
+
+def _handler_label() -> str:
+    if request.url_rule is not None:
+        return request.url_rule.rule
+    return request.path
+
+
+def _metrics_response() -> Response:
+    multiproc_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR", "").strip()
+    if multiproc_dir:
+        registry = CollectorRegistry()
+        multiprocess.MultiProcessCollector(registry)
+        payload = generate_latest(registry)
+    else:
+        payload = generate_latest()
+    return Response(payload, mimetype=CONTENT_TYPE_LATEST)
 
 
 def _normalize_sql(statement: str) -> str:
@@ -323,6 +352,31 @@ def create_app(test_config: dict | None = None) -> Flask:
             if error_obj is not None:
                 _finish_request_span(error_obj=error_obj)
 
+    @app.before_request
+    def begin_metrics_timer() -> None:
+        if request.path == "/metrics":
+            return
+        g._metrics_started_at = time.perf_counter()
+
+    @app.after_request
+    def record_request_metrics(response):
+        started_at = g.pop("_metrics_started_at", None)
+        if started_at is None:
+            return response
+
+        handler = _handler_label()
+        duration = max(time.perf_counter() - started_at, 0.0)
+        HTTP_REQUEST_DURATION.labels(
+            method=request.method,
+            handler=handler,
+        ).observe(duration)
+        HTTP_REQUESTS.labels(
+            method=request.method,
+            handler=handler,
+            status=str(response.status_code),
+        ).inc()
+        return response
+
     def get_db() -> sqlite3.Connection:
         if "db" not in g:
             g.db = sqlite3.connect(app.config["DATABASE"])
@@ -397,6 +451,10 @@ def create_app(test_config: dict | None = None) -> Flask:
     @app.get("/")
     def index():
         return redirect(url_for("list_pages"))
+
+    @app.get("/metrics")
+    def metrics():
+        return _metrics_response()
 
     @app.get("/pages")
     def list_pages():
