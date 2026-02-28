@@ -36,10 +36,9 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
       volumes:
         - name: wiki-data
-          {{- if and .Values.persistence.enabled .Values.persistence.hostPath }}
-          hostPath:
-            path: {{ .Values.persistence.hostPath | quote }}
-            type: DirectoryOrCreate
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ default (printf "%s-data" (include "cluster-lite-wiki.fullname" .)) .Values.persistence.existingClaim }}
           {{- else }}
           emptyDir: {}
           {{- end }}
