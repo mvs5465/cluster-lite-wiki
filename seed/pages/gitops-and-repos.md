@@ -8,8 +8,8 @@ This cluster uses a two-repo GitOps model to keep infrastructure and application
 
 | Repo | Role |
 | --- | --- |
-| `local-k8s-argocd` | Installs and manages ArgoCD, AppProject config, and root apps |
-| `local-k8s-apps` | Declares the system and user-facing applications ArgoCD should run |
+| `local-k8s-argocd` | Installs and manages ArgoCD, AppProject config, and the bootstrap `ApplicationSet` |
+| `local-k8s-apps` | Declares the system and user-facing `Application` specs used as `ApplicationSet` input |
 | App repos (for example `cluster-lite-wiki`, `cluster-home`, `cluster-query-router`) | Hold app code, images, and Helm charts |
 
 ## Why Two Repos
@@ -27,6 +27,7 @@ This cluster uses a two-repo GitOps model to keep infrastructure and application
 4. ArgoCD detects the new revision and syncs automatically.
 
 For app repos that provide a chart directly from GitHub, the repo URL must be whitelisted in the `cluster` AppProject.
+The bootstrap `ApplicationSet` then regenerates the live `Application` objects in rollout stages.
 
 ## Current Repo Relationships
 

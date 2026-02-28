@@ -8,7 +8,7 @@ This local Kubernetes environment is a Colima-backed k3s cluster managed through
 
 - Runtime: Colima with Kubernetes enabled
 - Kubernetes distribution: k3s
-- GitOps: ArgoCD watches `main` and applies both infrastructure and application repos
+- GitOps: ArgoCD watches `main`, applies bootstrap config, and generates app rollouts through an `ApplicationSet`
 - Primary hostnames: `*.lan`
 - Main entry point: `http://home.lan`
 
@@ -26,7 +26,7 @@ Mac Host
         +-- argocd
         |     |
         |     +-- watches local-k8s-argocd
-        |     +-- watches local-k8s-apps
+        |     +-- bootstrap ApplicationSet reads local-k8s-apps
         |
         +-- services
         |     |
@@ -45,7 +45,7 @@ Mac Host
 
 | Namespace | Purpose |
 | --- | --- |
-| `argocd` | GitOps control plane and root applications |
+| `argocd` | GitOps control plane and bootstrap applications |
 | `monitoring` | Grafana, Loki, Prometheus, Grafana Kubernetes Monitoring, and MCP services |
 | `ingress-nginx` | Shared ingress controller |
 | `external-secrets` | Cluster secret synchronization |
@@ -66,7 +66,7 @@ Mac Host
 ## Operating Model
 
 1. Infrastructure repo bootstraps ArgoCD and the shared AppProject.
-2. Applications repo defines the live services.
+2. The bootstrap `ApplicationSet` reads the applications repo and generates the live services.
 3. Individual app repos ship their own charts or images.
 4. ArgoCD syncs merged `main` changes automatically.
 
