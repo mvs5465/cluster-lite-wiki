@@ -28,6 +28,11 @@ The Helm chart lives in `chart/`. To persist data on the shared Colima-mounted s
 ```yaml
 persistence:
   enabled: true
+  size: 1Gi
   hostPath: /Users/matthewschwartz/clusterstorage/wiki/data
   mountPath: /data
 ```
+
+When `hostPath` is set, the chart creates a `PersistentVolume` and matching `PersistentVolumeClaim`
+that bind the wiki data to the Colima-mounted `~/clusterstorage` path. If `hostPath` is omitted,
+the chart still creates a PVC, but it uses the cluster's default storage class instead.

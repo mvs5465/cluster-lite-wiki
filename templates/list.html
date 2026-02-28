@@ -1,36 +1,67 @@
 {% extends "base.html" %}
 {% block title %}Pages | {{ site_name }}{% endblock %}
 {% block content %}
-<section class="panel">
-  <div class="panel-header">
-    <div>
-      <h1>Pages</h1>
-      <p class="muted">Lightweight browser-edited docs for your cluster.</p>
-    </div>
-    <a class="button primary" href="{{ url_for('new_page') }}">Create Page</a>
-  </div>
-  <form class="search" method="get" action="{{ url_for('list_pages') }}">
-    <input type="search" name="q" value="{{ query }}" placeholder="Search pages">
-    <button type="submit">Search</button>
-  </form>
-  {% if pages %}
-  <div class="page-list">
-    {% for page in pages %}
-    <article class="page-card">
-      <div class="page-card-header">
-        <h2><a href="{{ url_for('view_page', slug=page['slug']) }}">{{ page['title'] }}</a></h2>
-        <a class="button" href="{{ url_for('edit_page', slug=page['slug']) }}">Edit</a>
+<section class="docs-layout">
+  <aside class="sidebar-card">
+    <p class="eyebrow">Workspace</p>
+    <h1>Docs Library</h1>
+    <p class="muted">A cleaner index for cluster notes, operating guides, and quick references.</p>
+    <a class="button primary" href="{{ url_for('new_page') }}">New Document</a>
+    <dl class="meta-list">
+      <div>
+        <dt>Total pages</dt>
+        <dd>{{ pages|length }}</dd>
       </div>
-      <p class="muted">Updated {{ page['updated_at'] }}</p>
-      <p>{{ page['body'][:180] }}{% if page['body']|length > 180 %}...{% endif %}</p>
-    </article>
-    {% endfor %}
-  </div>
-  {% else %}
-  <div class="empty">
-    <h2>No pages yet</h2>
-    <p>Start by creating your first page.</p>
-  </div>
-  {% endif %}
+      <div>
+        <dt>Current filter</dt>
+        <dd>{{ query or "All pages" }}</dd>
+      </div>
+    </dl>
+    <div class="sidebar-note">
+      <h2>Good wiki structure</h2>
+      <p>Use short titles, stable slugs, and front-load the first paragraph with what the page is for.</p>
+    </div>
+  </aside>
+
+  <section class="panel page-index">
+    <div class="page-index-header">
+      <div>
+        <p class="eyebrow">Browse</p>
+        <h2>Find the right page quickly</h2>
+      </div>
+      <p class="muted">Search title or body text, then jump straight into the page or edit flow.</p>
+    </div>
+
+    <form class="search search-wide" method="get" action="{{ url_for('list_pages') }}">
+      <input type="search" name="q" value="{{ query }}" placeholder="Search pages, runbooks, commands, owners">
+      <button type="submit">Search</button>
+    </form>
+
+    {% if pages %}
+    <div class="page-list">
+      {% for page in pages %}
+      <article class="page-card">
+        <div class="page-card-main">
+          <div class="page-card-topline">
+            <span class="slug-chip">/{{ page['slug'] }}</span>
+            <span class="muted">Updated {{ page['updated_at'] }}</span>
+          </div>
+          <h3><a href="{{ url_for('view_page', slug=page['slug']) }}">{{ page['title'] }}</a></h3>
+          <p class="page-summary">{{ page['body'][:220] }}{% if page['body']|length > 220 %}...{% endif %}</p>
+        </div>
+        <div class="page-card-actions">
+          <a class="button" href="{{ url_for('view_page', slug=page['slug']) }}">Open</a>
+          <a class="button subtle" href="{{ url_for('edit_page', slug=page['slug']) }}">Edit</a>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty">
+      <h3>No pages yet</h3>
+      <p>Start by creating the first page in this workspace.</p>
+    </div>
+    {% endif %}
+  </section>
 </section>
 {% endblock %}
