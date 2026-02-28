@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Pages | {{ site_name }}{% endblock %}
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <h1>Pages</h1>
+      <p class="muted">Lightweight browser-edited docs for your cluster.</p>
+    </div>
+    <a class="button primary" href="{{ url_for('new_page') }}">Create Page</a>
+  </div>
+  <form class="search" method="get" action="{{ url_for('list_pages') }}">
+    <input type="search" name="q" value="{{ query }}" placeholder="Search pages">
+    <button type="submit">Search</button>
+  </form>
+  {% if pages %}
+  <div class="page-list">
+    {% for page in pages %}
+    <article class="page-card">
+      <div class="page-card-header">
+        <h2><a href="{{ url_for('view_page', slug=page['slug']) }}">{{ page['title'] }}</a></h2>
+        <a class="button" href="{{ url_for('edit_page', slug=page['slug']) }}">Edit</a>
+      </div>
+      <p class="muted">Updated {{ page['updated_at'] }}</p>
+      <p>{{ page['body'][:180] }}{% if page['body']|length > 180 %}...{% endif %}</p>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty">
+    <h2>No pages yet</h2>
+    <p>Start by creating your first page.</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
